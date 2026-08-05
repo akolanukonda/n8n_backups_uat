@@ -1,0 +1,1883 @@
+{
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-04-07T05:16:08.826Z",
+    "createdAt": "2026-04-07T05:16:08.826Z",
+    "versionId": "260ffced-344f-4adf-b85d-f8bda0cc7579",
+    "workflowId": "Y6p3XmvBdbSbo81H",
+    "nodes": [
+      {
+        "parameters": {
+          "jsCode": "const parseDate = (dateStr, isStart) => {\n  if (!dateStr) return null;\n\n  let [day, month, year] = dateStr.split('-').map(Number);\n\n  if (!day || !month || !year) return null;\n\n  // Create date object in UTC\n  let date = new Date(Date.UTC(year, month - 1, day));\n\n  // If it's not the start date, add one day\n  if (!isStart) {\n    date.setUTCDate(date.getUTCDate() + 1);\n  }\n\n  // Set time based on isStart\n  date.setUTCHours(isStart ? 7 : 6, isStart ? 0 : 59, isStart ? 0 : 59, isStart ? 0 : 999);\nconsole.log(date)\n  return Math.floor(date.getTime() / 1000);\n};\n\nconst dateFrom = $json.dateFrom;\nconst dateTo = $json.dateTo || dateFrom;\n\nconst from = parseDate(dateFrom, true);\nconst to = parseDate(dateTo, false);\n\nreturn [{ json: { from, to } }];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1760,
+          496
+        ],
+        "id": "5ecd9664-2579-4241-a2a6-0c78af221505",
+        "name": "Code",
+        "notesInFlow": true,
+        "notes": "Timestamp conversion"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "c8b16f3f-cb14-4a2f-9fc6-50fa93ef1f77",
+                "name": "dateFrom",
+                "value": "={{ $json.body.dateFrom }}",
+                "type": "string"
+              },
+              {
+                "id": "eccd277a-5f09-438e-912b-12aed5d10aff",
+                "name": "dateTo",
+                "value": "={{ $json.body.dateTo }}",
+                "type": "string"
+              },
+              {
+                "id": "f89dfa2c-c93c-45b0-afac-242b9db15127",
+                "name": "status",
+                "value": "={{ $json.body.statusType }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -1984,
+          496
+        ],
+        "id": "aa9a6d05-46d8-4f14-88c3-6388724bb25c",
+        "name": "Edit Fields",
+        "notesInFlow": true,
+        "notes": "Set feilds"
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "getFailedProd",
+          "authentication": "basicAuth",
+          "options": {
+            "rawBody": true
+          }
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          -2208,
+          512
+        ],
+        "id": "3e839867-01fb-4370-977a-c20c046e9cad",
+        "name": "Webhook",
+        "webhookId": "2c23ad0c-4d16-4df9-9b14-ec358e403124",
+        "notesInFlow": true,
+        "credentials": {
+          "httpBasicAuth": {
+            "id": "uZVpedy2ws3L2Nyb",
+            "name": "Dtai webhook auth"
+          }
+        },
+        "notes": "Update InvEmailRetry"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          -1104,
+          512
+        ],
+        "id": "ba2b774e-5844-42c4-ad8e-a157fe88ac53",
+        "name": "Loop Over Items"
+      },
+      {
+        "parameters": {
+          "jsCode": "const now = new Date().toISOString();\nconst item = $input.first().json;\nlet noUpdate= false;\n\nlet retryCount = 1;\nlet status = $('Loop Over Items').first().json.status;\nlet timestamp=$('Loop Over Items').first().json.timestamp\nlet emailSent =\"NO\";\nlet createdAt = now;\n\n\nif (item && item.retryCount) {\n  if ( $input.first().json.status== 'COMPLETE' || $input.first().json.status == 'RETRYFAILED'){\n    noUpdate=true;\n    return [\n  {\n    json: {\n      id: item.id,  // or previous node name\n      retryCount: item.retryCount,\n      status,\n      createdAt: item.createdAt,\n      updatedAt: item.updatedAt,\n      noUpdate: noUpdate\n    }\n  }\n];\n  }\n  const currentRetry = parseInt(item.retryCount);\n  timestamp=item.timestamp;\n  emailSent=item.emailSent\n  retryCount = currentRetry + 1;\n  status = retryCount > 3 ? \"RETRYFAILED\" : item.status || \"none\";\n  createdAt = item.createdAt;\n\n}\n\nreturn [\n  {\n    json: {\n      id: $('Loop Over Items').first().json.id,  // or previous node name\n      retryCount: retryCount.toString(),\n      status,\n      createdAt,\n      updatedAt: now,\n      noUpdate,\n      timestamp,\n      emailSent\n    }\n  }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -656,
+          48
+        ],
+        "id": "9e1636dd-2a06-4d78-8926-9286c0e2112a",
+        "name": "Code1",
+        "notesInFlow": true,
+        "notes": "Make item"
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "tableName": "InvEmail-sjm64kjbm5dg7bmk7iygcfsoxi-NONE",
+          "scan": true,
+          "filterExpression": "#status = :failed AND #timestamp BETWEEN :from AND :to",
+          "eavUi": {
+            "eavValues": [
+              {
+                "attribute": ":failed",
+                "value": "={{$('Edit Fields').item.json.status  }}"
+              },
+              {
+                "attribute": ":from",
+                "type": "N",
+                "value": "={{ $json.from.toString() }}"
+              },
+              {
+                "attribute": ":to",
+                "type": "N",
+                "value": "={{ $json.to.toString() }}"
+              }
+            ]
+          },
+          "returnAll": true,
+          "options": {
+            "eanUi": {
+              "eanValues": [
+                {
+                  "key": "#status",
+                  "value": "status"
+                },
+                {
+                  "key": "#timestamp",
+                  "value": "timestamp"
+                }
+              ]
+            }
+          }
+        },
+        "type": "n8n-nodes-base.awsDynamoDb",
+        "typeVersion": 1,
+        "position": [
+          -1536,
+          512
+        ],
+        "id": "78648a8e-4372-478c-9583-4d0ee9851a7b",
+        "name": "InvEmail",
+        "alwaysOutputData": true,
+        "notesInFlow": true,
+        "credentials": {
+          "aws": {
+            "id": "UcywaLb5X77xYxOv",
+            "name": "AWS Prod us-w2"
+          }
+        },
+        "notes": "GetAll failed"
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "tableName": "InvEmailRetry",
+          "keysUi": {
+            "keyValues": [
+              {
+                "key": "id",
+                "value": "={{ $json.id }}"
+              }
+            ]
+          },
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.awsDynamoDb",
+        "typeVersion": 1,
+        "position": [
+          -880,
+          48
+        ],
+        "id": "15086fb6-0254-47cf-bc4e-d1ce3eda5cc7",
+        "name": "InvEmailRetry",
+        "notesInFlow": true,
+        "credentials": {
+          "aws": {
+            "id": "UcywaLb5X77xYxOv",
+            "name": "AWS Prod us-w2"
+          }
+        },
+        "notes": "Check record(id)"
+      },
+      {
+        "parameters": {
+          "tableName": "InvEmailRetry",
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "id",
+                "fieldValue": "={{ $json.id }}"
+              },
+              {
+                "fieldId": "retryCount",
+                "fieldValue": "={{ $json.retryCount }}"
+              },
+              {
+                "fieldId": "status",
+                "fieldValue": "={{ $json.status }}"
+              },
+              {
+                "fieldId": "createdAt",
+                "fieldValue": "={{ $json.createdAt }}"
+              },
+              {
+                "fieldId": "updatedAt",
+                "fieldValue": "={{ new Date().toISOString() }}"
+              },
+              {
+                "fieldId": "timestamp",
+                "fieldValue": "={{ $json.timestamp }}"
+              },
+              {
+                "fieldId": "emailSent",
+                "fieldValue": "={{ $json.emailSent }}"
+              }
+            ]
+          },
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.awsDynamoDb",
+        "typeVersion": 1,
+        "position": [
+          0,
+          240
+        ],
+        "id": "0f072cb1-2a21-43af-9905-ac3838829fc2",
+        "name": "InvEmailRetry1",
+        "notesInFlow": true,
+        "credentials": {
+          "aws": {
+            "id": "UcywaLb5X77xYxOv",
+            "name": "AWS Prod us-w2"
+          }
+        },
+        "notes": "Update retryCount"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "fb353032-b20c-4d20-962a-d51d8204688d",
+                "leftValue": "={{ Number($json.retryCount) }}",
+                "rightValue": 3,
+                "operator": {
+                  "type": "number",
+                  "operation": "gt"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -224,
+          144
+        ],
+        "id": "0a821436-0ceb-4800-965f-e854e487f317",
+        "name": "If"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://graph.microsoft.com/v1.0/users/idai@deltaintech.com/sendMail",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer  {{ $json.access_token }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"message\": {\n    \"subject\": \"Retry exceeded\",\n    \"body\": {\n      \"contentType\": \"HTML\",\n      \"content\":\"<p>Retry limit exceeded for<br/> {{$('If').item.json.id}}</p>\" },\n    \"toRecipients\": [\n      {\n        \"emailAddress\": {\n          \"address\": \"ypeddiraju@deltaintech.com\"\n        }\n      },\n      {\n        \"emailAddress\": {\n          \"address\": \"mlekkala@deltaintech.com\"\n        }\n      },{\n        \"emailAddress\": {\n          \"address\": \"lpindra@deltaintech.com\"\n        }\n      },{\n        \"emailAddress\": {\n          \"address\": \"hburagadda@deltaintech.com\"\n        }\n      },\n        {\n        \"emailAddress\": {\n          \"address\": \"skasina@deltaintech.com\"\n        }\n      }\n    ]\n  }, \"saveToSentItems\": \"true\"\n}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          448,
+          224
+        ],
+        "id": "1b65c8cf-1865-482b-a864-7b8e6e0a10c5",
+        "name": "Send Email http",
+        "notesInFlow": true,
+        "retryOnFail": true,
+        "alwaysOutputData": false,
+        "onError": "continueErrorOutput",
+        "notes": "Sending email"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "2022d135-a374-4143-b83d-c5a03ffd073f",
+                "leftValue": "={{ $json.id !== undefined }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -1328,
+          496
+        ],
+        "id": "cc39f087-b4d0-49af-8004-9a1fab486d96",
+        "name": "If1"
+      },
+      {
+        "parameters": {
+          "tableName": "InvEmailRetry",
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "id",
+                "fieldValue": "={{ $json.id }}"
+              },
+              {
+                "fieldId": "retryCount",
+                "fieldValue": "=3"
+              },
+              {
+                "fieldId": "status",
+                "fieldValue": "={{ $json.status }}"
+              },
+              {
+                "fieldId": "createdAt",
+                "fieldValue": "={{ $json.createdAt }}"
+              },
+              {
+                "fieldId": "updatedAt",
+                "fieldValue": "={{ new Date().toISOString() }}"
+              },
+              {
+                "fieldId": "timestamp",
+                "fieldValue": "={{$json.timestamp}}"
+              },
+              {
+                "fieldId": "emailSent",
+                "fieldValue": "={{ $json.emailSent }}"
+              }
+            ]
+          },
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.awsDynamoDb",
+        "typeVersion": 1,
+        "position": [
+          0,
+          48
+        ],
+        "id": "d0d607f2-b346-4bce-b8af-81bcc756cae4",
+        "name": "InvEmailRetry2",
+        "notesInFlow": true,
+        "credentials": {
+          "aws": {
+            "id": "UcywaLb5X77xYxOv",
+            "name": "AWS Prod us-w2"
+          }
+        },
+        "notes": "Update RETRYFAILED"
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://graph.microsoft.com/v1.0/users/GenAIESInvoices@usecology.com/messages/{{ $('InvEmailRetry1').item.json.id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $json.access_token }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "isRead",
+                "value": "false"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          448,
+          432
+        ],
+        "id": "8567e8e3-e2c3-4415-8291-0b7840b9ca79",
+        "name": "Email Unread",
+        "notesInFlow": true,
+        "notes": "Email unread"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "5717f194-ef94-4af6-9185-9cd45a7bed15",
+                "leftValue": "={{ $json.noUpdate }}",
+                "rightValue": "=COMPLETE",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "false",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "or"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -448,
+          48
+        ],
+        "id": "337951a1-163b-490b-9fd9-2f3742c8fae2",
+        "name": "If2"
+      },
+      {
+        "parameters": {
+          "tableName": "InvEmailRetryErrors",
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "id",
+                "fieldValue": "={{ $json.uuid }}"
+              },
+              {
+                "fieldId": "mId",
+                "fieldValue": "={{ $('If2').item.json.id }}"
+              },
+              {
+                "fieldId": "retryNumber",
+                "fieldValue": "={{ $('If2').item.json.retryCount }}"
+              },
+              {
+                "fieldId": "errorDate",
+                "fieldValue": "={{$('Loop Over Items').item.json.updatedAt}}"
+              },
+              {
+                "fieldId": "errorMessage",
+                "fieldValue": "={{$('Loop Over Items').item.json.errorMessage || \"Undefined\"}}"
+              }
+            ]
+          },
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.awsDynamoDb",
+        "typeVersion": 1,
+        "position": [
+          288,
+          -176
+        ],
+        "id": "666360b1-8e6b-4017-bc89-25e35ec3af9d",
+        "name": "InvEmailRetryErrors",
+        "credentials": {
+          "aws": {
+            "id": "UcywaLb5X77xYxOv",
+            "name": "AWS Prod us-w2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "function generateUUID() {\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\n\n\nreturn [{\n  json: {\n    uuid: generateUUID()\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          80,
+          -176
+        ],
+        "id": "8fcd3295-5084-4624-91c9-79430d97e83b",
+        "name": "Code2"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "337b875f-fef1-445b-a115-aeab7e389e74",
+                "leftValue": "={{ $json.status }}",
+                "rightValue": "RETRYFAILED",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEquals"
+                }
+              },
+              {
+                "id": "3f995b7e-87f4-4518-9d57-b4305387f216",
+                "leftValue": "={{ $json.status }}",
+                "rightValue": "COMPLETE",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEquals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -224,
+          -160
+        ],
+        "id": "caf87601-fa6d-49ac-9244-2d572469597b",
+        "name": "If3"
+      },
+      {
+        "parameters": {
+          "url": "={{ $env.DELTA_TOKEN_URL }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {}
+            ]
+          },
+          "sendBody": true,
+          "contentType": "form-urlencoded",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "grant_type",
+                "value": "={{$env.DELTA_GRANT_TYPE}}"
+              },
+              {
+                "name": "client_id",
+                "value": "={{$env.DELTA_CLIENT_ID}}"
+              },
+              {
+                "name": "client_secret",
+                "value": "={{$env.DELTA_CLIENT_SECRET}}"
+              },
+              {
+                "name": "scope",
+                "value": "={{$env.DELTA_SCOPE}}"
+              }
+            ]
+          },
+          "options": {
+            "redirect": {
+              "redirect": {}
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          224,
+          48
+        ],
+        "id": "c67af48c-370d-4b6c-a2ed-1a0092d84838",
+        "name": "Get Token1",
+        "notesInFlow": true,
+        "alwaysOutputData": true,
+        "notes": "Get token"
+      },
+      {
+        "parameters": {
+          "url": "={{ $env.RSI_TOKEN_URL }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {}
+            ]
+          },
+          "sendBody": true,
+          "contentType": "form-urlencoded",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "grant_type",
+                "value": "={{$env.RSI_GRANT_TYPE}}"
+              },
+              {
+                "name": "client_id",
+                "value": "={{$env.RSI_CLIENT_ID}}"
+              },
+              {
+                "name": "client_secret",
+                "value": "={{$env.RSI_CLIENT_SECRET}}"
+              },
+              {
+                "name": "scope",
+                "value": "={{$env.RSI_SCOPE}}"
+              }
+            ]
+          },
+          "options": {
+            "redirect": {
+              "redirect": {}
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          224,
+          240
+        ],
+        "id": "0e2df332-0d1b-46af-8dfe-c6f9524507d1",
+        "name": "Get Token",
+        "notesInFlow": true,
+        "alwaysOutputData": true,
+        "notes": "Get token"
+      }
+    ],
+    "connections": {
+      "Code": {
+        "main": [
+          [
+            {
+              "node": "InvEmail",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Edit Fields": {
+        "main": [
+          [
+            {
+              "node": "Code",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Loop Over Items": {
+        "main": [
+          [],
+          [
+            {
+              "node": "InvEmailRetry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code1": {
+        "main": [
+          [
+            {
+              "node": "If2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "InvEmail": {
+        "main": [
+          [
+            {
+              "node": "If1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "InvEmailRetry": {
+        "main": [
+          [
+            {
+              "node": "Code1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "InvEmailRetry1": {
+        "main": [
+          [
+            {
+              "node": "Get Token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If": {
+        "main": [
+          [
+            {
+              "node": "InvEmailRetry2",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "InvEmailRetry1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Email http": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If1": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "InvEmailRetry2": {
+        "main": [
+          [
+            {
+              "node": "Get Token1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Email Unread": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If2": {
+        "main": [
+          [
+            {
+              "node": "If",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "If3",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code2": {
+        "main": [
+          [
+            {
+              "node": "InvEmailRetryErrors",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If3": {
+        "main": [
+          [
+            {
+              "node": "Code2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Token1": {
+        "main": [
+          [
+            {
+              "node": "Send Email http",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Token": {
+        "main": [
+          [
+            {
+              "node": "Email Unread",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "system migration",
+    "name": null,
+    "description": null,
+    "autosaved": false
+  },
+  "activeVersionId": "260ffced-344f-4adf-b85d-f8bda0cc7579",
+  "connections": {
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "InvEmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "InvEmailRetry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InvEmail": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InvEmailRetry": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InvEmailRetry1": {
+      "main": [
+        [
+          {
+            "node": "Get Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "InvEmailRetry2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "InvEmailRetry1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email http": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InvEmailRetry2": {
+      "main": [
+        [
+          {
+            "node": "Get Token1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Unread": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "InvEmailRetryErrors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Token1": {
+      "main": [
+        [
+          {
+            "node": "Send Email http",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Token": {
+      "main": [
+        [
+          {
+            "node": "Email Unread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2025-06-16T11:58:41.453Z",
+  "id": "Y6p3XmvBdbSbo81H",
+  "isArchived": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "name": "Prod - Dtai Report Upadate Retry",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const parseDate = (dateStr, isStart) => {\n  if (!dateStr) return null;\n\n  let [day, month, year] = dateStr.split('-').map(Number);\n\n  if (!day || !month || !year) return null;\n\n  // Create date object in UTC\n  let date = new Date(Date.UTC(year, month - 1, day));\n\n  // If it's not the start date, add one day\n  if (!isStart) {\n    date.setUTCDate(date.getUTCDate() + 1);\n  }\n\n  // Set time based on isStart\n  date.setUTCHours(isStart ? 7 : 6, isStart ? 0 : 59, isStart ? 0 : 59, isStart ? 0 : 999);\nconsole.log(date)\n  return Math.floor(date.getTime() / 1000);\n};\n\nconst dateFrom = $json.dateFrom;\nconst dateTo = $json.dateTo || dateFrom;\n\nconst from = parseDate(dateFrom, true);\nconst to = parseDate(dateTo, false);\n\nreturn [{ json: { from, to } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1760,
+        496
+      ],
+      "id": "5ecd9664-2579-4241-a2a6-0c78af221505",
+      "name": "Code",
+      "notesInFlow": true,
+      "notes": "Timestamp conversion"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c8b16f3f-cb14-4a2f-9fc6-50fa93ef1f77",
+              "name": "dateFrom",
+              "value": "={{ $json.body.dateFrom }}",
+              "type": "string"
+            },
+            {
+              "id": "eccd277a-5f09-438e-912b-12aed5d10aff",
+              "name": "dateTo",
+              "value": "={{ $json.body.dateTo }}",
+              "type": "string"
+            },
+            {
+              "id": "f89dfa2c-c93c-45b0-afac-242b9db15127",
+              "name": "status",
+              "value": "={{ $json.body.statusType }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1984,
+        496
+      ],
+      "id": "aa9a6d05-46d8-4f14-88c3-6388724bb25c",
+      "name": "Edit Fields",
+      "notesInFlow": true,
+      "notes": "Set feilds"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "getFailedProd",
+        "authentication": "basicAuth",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2208,
+        512
+      ],
+      "id": "3e839867-01fb-4370-977a-c20c046e9cad",
+      "name": "Webhook",
+      "webhookId": "2c23ad0c-4d16-4df9-9b14-ec358e403124",
+      "notesInFlow": true,
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "uZVpedy2ws3L2Nyb",
+          "name": "Dtai webhook auth"
+        }
+      },
+      "notes": "Update InvEmailRetry"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1104,
+        512
+      ],
+      "id": "ba2b774e-5844-42c4-ad8e-a157fe88ac53",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date().toISOString();\nconst item = $input.first().json;\nlet noUpdate= false;\n\nlet retryCount = 1;\nlet status = $('Loop Over Items').first().json.status;\nlet timestamp=$('Loop Over Items').first().json.timestamp\nlet emailSent =\"NO\";\nlet createdAt = now;\n\n\nif (item && item.retryCount) {\n  if ( $input.first().json.status== 'COMPLETE' || $input.first().json.status == 'RETRYFAILED'){\n    noUpdate=true;\n    return [\n  {\n    json: {\n      id: item.id,  // or previous node name\n      retryCount: item.retryCount,\n      status,\n      createdAt: item.createdAt,\n      updatedAt: item.updatedAt,\n      noUpdate: noUpdate\n    }\n  }\n];\n  }\n  const currentRetry = parseInt(item.retryCount);\n  timestamp=item.timestamp;\n  emailSent=item.emailSent\n  retryCount = currentRetry + 1;\n  status = retryCount > 3 ? \"RETRYFAILED\" : item.status || \"none\";\n  createdAt = item.createdAt;\n\n}\n\nreturn [\n  {\n    json: {\n      id: $('Loop Over Items').first().json.id,  // or previous node name\n      retryCount: retryCount.toString(),\n      status,\n      createdAt,\n      updatedAt: now,\n      noUpdate,\n      timestamp,\n      emailSent\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        48
+      ],
+      "id": "9e1636dd-2a06-4d78-8926-9286c0e2112a",
+      "name": "Code1",
+      "notesInFlow": true,
+      "notes": "Make item"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableName": "InvEmail-sjm64kjbm5dg7bmk7iygcfsoxi-NONE",
+        "scan": true,
+        "filterExpression": "#status = :failed AND #timestamp BETWEEN :from AND :to",
+        "eavUi": {
+          "eavValues": [
+            {
+              "attribute": ":failed",
+              "value": "={{$('Edit Fields').item.json.status  }}"
+            },
+            {
+              "attribute": ":from",
+              "type": "N",
+              "value": "={{ $json.from.toString() }}"
+            },
+            {
+              "attribute": ":to",
+              "type": "N",
+              "value": "={{ $json.to.toString() }}"
+            }
+          ]
+        },
+        "returnAll": true,
+        "options": {
+          "eanUi": {
+            "eanValues": [
+              {
+                "key": "#status",
+                "value": "status"
+              },
+              {
+                "key": "#timestamp",
+                "value": "timestamp"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        -1536,
+        512
+      ],
+      "id": "78648a8e-4372-478c-9583-4d0ee9851a7b",
+      "name": "InvEmail",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "credentials": {
+        "aws": {
+          "id": "UcywaLb5X77xYxOv",
+          "name": "AWS Prod us-w2"
+        }
+      },
+      "notes": "GetAll failed"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableName": "InvEmailRetry",
+        "keysUi": {
+          "keyValues": [
+            {
+              "key": "id",
+              "value": "={{ $json.id }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        48
+      ],
+      "id": "15086fb6-0254-47cf-bc4e-d1ce3eda5cc7",
+      "name": "InvEmailRetry",
+      "notesInFlow": true,
+      "credentials": {
+        "aws": {
+          "id": "UcywaLb5X77xYxOv",
+          "name": "AWS Prod us-w2"
+        }
+      },
+      "notes": "Check record(id)"
+    },
+    {
+      "parameters": {
+        "tableName": "InvEmailRetry",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id",
+              "fieldValue": "={{ $json.id }}"
+            },
+            {
+              "fieldId": "retryCount",
+              "fieldValue": "={{ $json.retryCount }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            },
+            {
+              "fieldId": "createdAt",
+              "fieldValue": "={{ $json.createdAt }}"
+            },
+            {
+              "fieldId": "updatedAt",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            },
+            {
+              "fieldId": "timestamp",
+              "fieldValue": "={{ $json.timestamp }}"
+            },
+            {
+              "fieldId": "emailSent",
+              "fieldValue": "={{ $json.emailSent }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        0,
+        240
+      ],
+      "id": "0f072cb1-2a21-43af-9905-ac3838829fc2",
+      "name": "InvEmailRetry1",
+      "notesInFlow": true,
+      "credentials": {
+        "aws": {
+          "id": "UcywaLb5X77xYxOv",
+          "name": "AWS Prod us-w2"
+        }
+      },
+      "notes": "Update retryCount"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fb353032-b20c-4d20-962a-d51d8204688d",
+              "leftValue": "={{ Number($json.retryCount) }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -224,
+        144
+      ],
+      "id": "0a821436-0ceb-4800-965f-e854e487f317",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.microsoft.com/v1.0/users/idai@deltaintech.com/sendMail",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer  {{ $json.access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": {\n    \"subject\": \"Retry exceeded\",\n    \"body\": {\n      \"contentType\": \"HTML\",\n      \"content\":\"<p>Retry limit exceeded for<br/> {{$('If').item.json.id}}</p>\" },\n    \"toRecipients\": [\n      {\n        \"emailAddress\": {\n          \"address\": \"ypeddiraju@deltaintech.com\"\n        }\n      },\n      {\n        \"emailAddress\": {\n          \"address\": \"mlekkala@deltaintech.com\"\n        }\n      },{\n        \"emailAddress\": {\n          \"address\": \"lpindra@deltaintech.com\"\n        }\n      },{\n        \"emailAddress\": {\n          \"address\": \"hburagadda@deltaintech.com\"\n        }\n      },\n        {\n        \"emailAddress\": {\n          \"address\": \"skasina@deltaintech.com\"\n        }\n      }\n    ]\n  }, \"saveToSentItems\": \"true\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        224
+      ],
+      "id": "1b65c8cf-1865-482b-a864-7b8e6e0a10c5",
+      "name": "Send Email http",
+      "notesInFlow": true,
+      "retryOnFail": true,
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput",
+      "notes": "Sending email"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2022d135-a374-4143-b83d-c5a03ffd073f",
+              "leftValue": "={{ $json.id !== undefined }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1328,
+        496
+      ],
+      "id": "cc39f087-b4d0-49af-8004-9a1fab486d96",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "tableName": "InvEmailRetry",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id",
+              "fieldValue": "={{ $json.id }}"
+            },
+            {
+              "fieldId": "retryCount",
+              "fieldValue": "=3"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            },
+            {
+              "fieldId": "createdAt",
+              "fieldValue": "={{ $json.createdAt }}"
+            },
+            {
+              "fieldId": "updatedAt",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            },
+            {
+              "fieldId": "timestamp",
+              "fieldValue": "={{$json.timestamp}}"
+            },
+            {
+              "fieldId": "emailSent",
+              "fieldValue": "={{ $json.emailSent }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        0,
+        48
+      ],
+      "id": "d0d607f2-b346-4bce-b8af-81bcc756cae4",
+      "name": "InvEmailRetry2",
+      "notesInFlow": true,
+      "credentials": {
+        "aws": {
+          "id": "UcywaLb5X77xYxOv",
+          "name": "AWS Prod us-w2"
+        }
+      },
+      "notes": "Update RETRYFAILED"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://graph.microsoft.com/v1.0/users/GenAIESInvoices@usecology.com/messages/{{ $('InvEmailRetry1').item.json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "isRead",
+              "value": "false"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        432
+      ],
+      "id": "8567e8e3-e2c3-4415-8291-0b7840b9ca79",
+      "name": "Email Unread",
+      "notesInFlow": true,
+      "notes": "Email unread"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5717f194-ef94-4af6-9185-9cd45a7bed15",
+              "leftValue": "={{ $json.noUpdate }}",
+              "rightValue": "=COMPLETE",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -448,
+        48
+      ],
+      "id": "337951a1-163b-490b-9fd9-2f3742c8fae2",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "tableName": "InvEmailRetryErrors",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id",
+              "fieldValue": "={{ $json.uuid }}"
+            },
+            {
+              "fieldId": "mId",
+              "fieldValue": "={{ $('If2').item.json.id }}"
+            },
+            {
+              "fieldId": "retryNumber",
+              "fieldValue": "={{ $('If2').item.json.retryCount }}"
+            },
+            {
+              "fieldId": "errorDate",
+              "fieldValue": "={{$('Loop Over Items').item.json.updatedAt}}"
+            },
+            {
+              "fieldId": "errorMessage",
+              "fieldValue": "={{$('Loop Over Items').item.json.errorMessage || \"Undefined\"}}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        288,
+        -176
+      ],
+      "id": "666360b1-8e6b-4017-bc89-25e35ec3af9d",
+      "name": "InvEmailRetryErrors",
+      "credentials": {
+        "aws": {
+          "id": "UcywaLb5X77xYxOv",
+          "name": "AWS Prod us-w2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function generateUUID() {\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\n\n\nreturn [{\n  json: {\n    uuid: generateUUID()\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -176
+      ],
+      "id": "8fcd3295-5084-4624-91c9-79430d97e83b",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "337b875f-fef1-445b-a115-aeab7e389e74",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "RETRYFAILED",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "3f995b7e-87f4-4518-9d57-b4305387f216",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "COMPLETE",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -224,
+        -160
+      ],
+      "id": "caf87601-fa6d-49ac-9244-2d572469597b",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.DELTA_TOKEN_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "={{$env.DELTA_GRANT_TYPE}}"
+            },
+            {
+              "name": "client_id",
+              "value": "={{$env.DELTA_CLIENT_ID}}"
+            },
+            {
+              "name": "client_secret",
+              "value": "={{$env.DELTA_CLIENT_SECRET}}"
+            },
+            {
+              "name": "scope",
+              "value": "={{$env.DELTA_SCOPE}}"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        48
+      ],
+      "id": "c67af48c-370d-4b6c-a2ed-1a0092d84838",
+      "name": "Get Token1",
+      "notesInFlow": true,
+      "alwaysOutputData": true,
+      "notes": "Get token"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.RSI_TOKEN_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "={{$env.RSI_GRANT_TYPE}}"
+            },
+            {
+              "name": "client_id",
+              "value": "={{$env.RSI_CLIENT_ID}}"
+            },
+            {
+              "name": "client_secret",
+              "value": "={{$env.RSI_CLIENT_SECRET}}"
+            },
+            {
+              "name": "scope",
+              "value": "={{$env.RSI_SCOPE}}"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        240
+      ],
+      "id": "0e2df332-0d1b-46af-8dfe-c6f9524507d1",
+      "name": "Get Token",
+      "notesInFlow": true,
+      "alwaysOutputData": true,
+      "notes": "Get token"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "connection": "upgrade",
+            "host": "dev-n8n.enhansd.app",
+            "x-real-ip": "14.99.206.10",
+            "x-forwarded-for": "14.99.206.10",
+            "x-forwarded-proto": "https",
+            "content-length": "98",
+            "content-type": "application/json",
+            "authorization": "Basic YWljb2U6RGVsdGEjMTIz",
+            "user-agent": "PostmanRuntime/7.48.0",
+            "accept": "*/*",
+            "cache-control": "no-cache",
+            "postman-token": "73e4df5c-2b1b-46d5-bce7-c427229c4156",
+            "accept-encoding": "gzip, deflate, br"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "dateFrom": "29-10-2025",
+            "dateTo": "29-10-2025",
+            "statusType": "PROCESS_STARTED"
+          },
+          "webhookUrl": "https://dev-n8n.enhansd.app/webhook/getFailedProd",
+          "executionMode": "production"
+        },
+        "binary": {
+          "data": {
+            "data": "ew0KICAgICJkYXRlRnJvbSI6IjI5LTEwLTIwMjUiLA0KICAgICJkYXRlVG8iOiIyOS0xMC0yMDI1IiwNCiAgICAic3RhdHVzVHlwZSI6IlBST0NFU1NfU1RBUlRFRCINCn0=",
+            "mimeType": "application/json"
+          }
+        }
+      }
+    ]
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "shared": [
+    {
+      "updatedAt": "2025-06-16T11:58:41.453Z",
+      "createdAt": "2025-06-16T11:58:41.453Z",
+      "role": "workflow:owner",
+      "workflowId": "Y6p3XmvBdbSbo81H",
+      "projectId": "4Wr7mCxGpraWAQK7"
+    }
+  ],
+  "staticData": null,
+  "tags": [
+    {
+      "updatedAt": "2025-06-16T12:00:31.483Z",
+      "createdAt": "2025-06-16T12:00:31.483Z",
+      "id": "Blp0aNHv9BIFRYfc",
+      "name": "prod"
+    },
+    {
+      "updatedAt": "2025-06-12T06:25:18.141Z",
+      "createdAt": "2025-06-12T06:25:18.141Z",
+      "id": "kx5s8St26lAdobn1",
+      "name": "dtaiReport"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-11-04T04:14:31.711Z",
+  "versionId": "260ffced-344f-4adf-b85d-f8bda0cc7579"
+}
